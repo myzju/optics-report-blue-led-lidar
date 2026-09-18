@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 
-const sections = ['top', 'question', 'led-history', 'led-principle', 'white-light', 'lidar-history', 'tof', 'point-cloud', 'future'];
+const sections = ['top', 'question', 'led-history', 'led-principle', 'white-light', 'lidar-history', 'tof', 'point-cloud', 'future', 'research', 'closing'];
+const slideTitles = ['从书桌到车前', '两个身边的瞬间', '蓝光补齐拼图', '量子阱中的蓝光', '蓝光如何成为白光', '机器如何获得距离', '纳秒级光学秒表', '回波如何成为点云', '两条未来路径', '浙大集成光子 LiDAR', '从看见到理解'];
 const ledSteps = [
   ['未加偏压', '载流子分处两侧，结区势垒阻止持续注入。'],
   ['正向注入', '电子由 n 区、空穴由 p 区进入 InGaN 有源区。'],
@@ -119,43 +120,39 @@ export default function Home() {
   const [pointMode, setPointMode] = useState<'distance' | 'intensity' | 'semantic'>('distance');
   const [futureStep, setFutureStep] = useState(0);
   const [referencesOpen, setReferencesOpen] = useState(false);
+  const touchStartX = useRef(0);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(entries => {
-      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (visible) setActiveSection(sections.indexOf(visible.target.id));
-    }, { threshold: [.36, .62] });
-    sections.forEach(id => { const element = document.getElementById(id); if (element) observer.observe(element); });
-    return () => observer.disconnect();
-  }, []);
-  const scrollToSection = useCallback((index: number) => {
-    document.getElementById(sections[Math.max(0, Math.min(sections.length - 1, index))])?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  const goToSlide = useCallback((index: number) => setActiveSection(Math.max(0, Math.min(sections.length - 1, index))), []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowDown' || event.key === 'PageDown') { event.preventDefault(); scrollToSection(activeSection + 1); }
-      if (event.key === 'ArrowUp' || event.key === 'PageUp') { event.preventDefault(); scrollToSection(activeSection - 1); }
+      const target = event.target as HTMLElement;
+      const rangeEditing = target.tagName === 'INPUT';
+      const spaceActivatesControl = ['BUTTON','A'].includes(target.tagName) && event.key === ' ';
+      if (!rangeEditing && !spaceActivatesControl && ['ArrowDown','ArrowRight','PageDown',' '].includes(event.key)) { event.preventDefault(); goToSlide(activeSection + 1); }
+      if (!rangeEditing && ['ArrowUp','ArrowLeft','PageUp'].includes(event.key)) { event.preventDefault(); goToSlide(activeSection - 1); }
+      if (!rangeEditing && event.key === 'Home') { event.preventDefault(); goToSlide(0); }
+      if (!rangeEditing && event.key === 'End') { event.preventDefault(); goToSlide(sections.length - 1); }
       if (event.key === 'Escape') setReferencesOpen(false);
     };
     window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
-  }, [activeSection, scrollToSection]);
+  }, [activeSection, goToSlide]);
   const roundTrip = useMemo(() => (distance * 2 / 299792458 * 1e9).toFixed(0), [distance]);
   const echoPosition = 23 + (distance - 10) / 90 * 68;
 
   return (
-    <main className="story">
+    <main className="story presentation" onTouchStart={event=>{touchStartX.current=event.changedTouches[0].clientX}} onTouchEnd={event=>{const delta=event.changedTouches[0].clientX-touchStartX.current;if(Math.abs(delta)>55)goToSlide(activeSection+(delta<0?1:-1))}}>
       <header className="story-nav">
-        <a href="#top" className="wordmark"><b>OPTICS / 02</b><span>光基科技与人类文明</span></a>
+        <a href="#top" className="wordmark" onClick={event=>{event.preventDefault();goToSlide(0)}}><b>OPTICS / 02</b><span>光基科技与人类文明</span></a>
         <div className="nav-axis">
-          <a className={activeSection <= 4 ? 'active' : ''} href="#led-history">01 让人看见</a><i />
-          <a className={activeSection >= 5 && activeSection <= 7 ? 'active' : ''} href="#lidar-history">02 让机器看见</a><i />
-          <a className={activeSection === 8 ? 'active' : ''} href="#future">03 主动光学</a>
+          <a className={activeSection <= 4 ? 'active' : ''} href="#led-history" onClick={event=>{event.preventDefault();goToSlide(2)}}>01 让人看见</a><i />
+          <a className={activeSection >= 5 && activeSection <= 7 ? 'active' : ''} href="#lidar-history" onClick={event=>{event.preventDefault();goToSlide(5)}}>02 让机器看见</a><i />
+          <a className={activeSection >= 8 ? 'active' : ''} href="#future" onClick={event=>{event.preventDefault();goToSlide(8)}}>03 主动光学</a>
         </div>
         <span className="section-count"><i>SYS · ONLINE</i>{String(activeSection + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}</span>
       </header>
       <div className="story-progress" aria-hidden="true"><i style={{ height: `${((activeSection + 1) / sections.length) * 100}%` }} /><span>SCROLL</span></div>
 
-      <section className="story-hero" id="top">
+      <section className={'story-hero slide '+(activeSection===0?'active':'')} id="top" aria-hidden={activeSection!==0}>
         <div className="hero-scene hero-scene-lamp" /><div className="hero-scene hero-scene-car" /><div className="hero-vignette" /><div className="hero-grid" />
         <div className="hero-hud" aria-hidden="true"><span>EMISSION · 450 NM</span><span>TIME OF FLIGHT · ΔT</span><i /><i /></div>
         <div className="hero-title"><p>两件身边的光学仪器</p><h1>从书桌<br />到车前</h1>
@@ -164,10 +161,10 @@ export default function Home() {
         <div className="light-path human-path"><span>LED</span><i /><span>书本</span><i /><strong>人眼</strong></div>
         <div className="light-path machine-path"><span>LiDAR</span><i /><span>行人</span><i className="return" /><strong>探测器</strong></div>
         <div className="spectrum-scale" aria-hidden="true"><span>380</span><i /><i /><i /><i /><i /><span>780 nm</span></div>
-        <a className="scroll-cue" href="#question">沿着光，继续向下 <b>↓</b></a>
+        <button className="scroll-cue" onClick={()=>goToSlide(1)}>开始演示 <b>→</b></button>
       </section>
 
-      <section className="opening-question" id="question">
+      <section className={'opening-question slide '+(activeSection===1?'active':'')} id="question" aria-hidden={activeSection!==1}>
         <div className="question-copy"><p className="eyebrow">一天 · 两个动作</p><h2>按下台灯开关。<br />走过一辆汽车。</h2><p>两个再普通不过的瞬间，背后对应着光学技术的两次跨越：</p></div>
         <div className="question-pair">
           <article><span>01</span><h3>怎样高效地<br />制造白光？</h3><p>蓝光 LED 补齐固态照明缺失的短波光源。</p></article>
@@ -175,7 +172,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="chapter-opening led-opening" id="led-history">
+      <section className={'chapter-opening led-opening slide '+(activeSection===2?'active':'')} id="led-history" aria-hidden={activeSection!==2}>
         <div className="chapter-photo led-photo" />
         <div className="chapter-copy"><p className="eyebrow warm">第一道难题 · 历史</p><h2>白光照明，<br />曾缺少最后一块拼图。</h2>
           <p>红光与绿光 LED 已经出现，高效蓝光却长期缺席。蓝光的突破不是“多一种颜色”，而是让固态白光照明真正成立。</p>
@@ -183,7 +180,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="lab-section led-lab-section" id="led-principle">
+      <section className={'lab-section led-lab-section slide '+(activeSection===3?'active':'')} id="led-principle" aria-hidden={activeSection!==3}>
         <div className="lab-copy"><p className="eyebrow blue">蓝光如何产生</p><h2>把载流子关进<br />纳米尺度的量子阱。</h2><p className="lab-intro">{ledSteps[ledStep][1]}</p>
           <div className="formula compact"><span>hν ≈ E<sub>transition</sub></span><b>450 nm ≈ 2.76 eV</b></div>
           <StepButtons step={ledStep} setStep={setLedStep} labels={ledSteps.map(item => item[0])} />
@@ -196,11 +193,12 @@ export default function Home() {
             <div className="n-layer"><span>n-GaN</span><div className="carrier electron e-one">e⁻</div><div className="carrier electron e-two">e⁻</div></div>
           </div>
           <div className="band-panel"><div className="energy-axis"><span>E</span><i /></div><div className="band-row conduction"><b>E<sub>c</sub></b><i /><i /><i /></div><div className="transition-arrow"><span>电子跃迁</span></div><div className="band-row valence"><b>E<sub>v</sub></b><i /><i /><i /></div><div className="photon-wave"><i /><i /><i /><i /></div></div>
+          <div className="advanced-equation led-efficiency"><span>ABC 复合模型</span><b>η<sub>IQE</sub> = Bn² / (An + Bn² + Cn³)</b><small>SRH · 辐射复合 · Auger</small></div>
           <p className="stage-note">示意图不按尺度绘制</p>
         </div>
       </section>
 
-      <section className="lab-section white-lab-section" id="white-light">
+      <section className={'lab-section white-lab-section slide '+(activeSection===4?'active':'')} id="white-light" aria-hidden={activeSection!==4}>
         <div className="lab-copy"><p className="eyebrow warm">从蓝光到白光 · 现实</p><h2>白光不是一种光，<br />而是一组光谱。</h2><p className="lab-intro">{whiteModes[whiteMode][2]}</p>
           <div className="mode-tabs">{whiteModes.map((mode,index)=><button key={mode[0]} className={whiteMode===index?'active':''} onClick={()=>setWhiteMode(index)}>{mode[0]}</button>)}</div>
           <div className="metric-row"><span><b>看亮度</b>照度</span><span><b>看颜色</b>显色</span><span><b>看时间</b>频闪与节律</span></div>
@@ -208,17 +206,18 @@ export default function Home() {
         <div className={'white-stage white-mode-' + whiteMode}>
           <div className="package-demo"><div className="blue-chip">InGaN<span>450 nm</span></div><div className="blue-rays"><i /><i /><i /><i /><i /></div><div className="phosphor-layer"><span>荧光粉</span><b>吸收 · 弛豫 · 再发射</b></div><div className="converted-rays"><i /><i /><i /><i /><i /></div><div className="white-output">白光</div></div>
           <div className="spectrum-panel"><div className="spectrum-grid" /><div className="spectral-blue"><span>蓝光窄峰</span></div><div className="spectral-wide"><span>荧光宽带</span></div><div className="spectrum-axis"><span>400</span><span>500</span><span>600</span><span>700 nm</span></div><strong>{whiteModes[whiteMode][1]}</strong></div>
+          <div className="advanced-equation stokes-equation"><span>Stokes 位移</span><b>ΔE = h(ν<sub>abs</sub> − ν<sub>em</sub>) &gt; 0</b></div>
         </div>
       </section>
 
-      <section className="chapter-opening lidar-opening" id="lidar-history">
+      <section className={'chapter-opening lidar-opening slide '+(activeSection===5?'active':'')} id="lidar-history" aria-hidden={activeSection!==5}>
         <div className="chapter-copy"><p className="eyebrow cyan">第二道难题 · 历史</p><h2>机器看见了行人，<br />但他究竟有多远？</h2><p>摄像头提供纹理与语义，距离却不是每个像素直接给出的量。LiDAR 选择了一种更主动的方法：发出光，再给光的往返计时。</p>
           <div className="history-line dark-line"><span><b>1964</b>卫星激光测距</span><i /><span><b>2000s</b>无人车与机器人</span><i /><span><b>今天</b>走上日常道路</span></div>
         </div>
         <div className="chapter-photo lidar-photo" />
       </section>
 
-      <section className="lab-section tof-lab-section" id="tof">
+      <section className={'lab-section tof-lab-section slide '+(activeSection===6?'active':'')} id="tof" aria-hidden={activeSection!==6}>
         <div className="lab-copy"><p className="eyebrow cyan">直接飞行时间 · dToF</p><h2>给光按下一块<br />纳秒级秒表。</h2><p className="lab-intro">空间距离越远，时间轴上的回波峰就越向右移动。</p>
           <div className="formula tof-equation"><span>R = cΔt / 2</span><b>{distance} m ↔ {roundTrip} ns</b></div>
           <label className="distance-control"><span>目标距离</span><input type="range" min="10" max="100" value={distance} onChange={event=>setDistance(Number(event.target.value))}/><strong>{distance} m</strong></label>
@@ -229,11 +228,12 @@ export default function Home() {
             <div className={pulseKey > 0 ? 'pulse-sequence fired' : 'pulse-sequence'} key={pulseKey} style={{'--target':echoPosition+'%','--pulse-time':Math.max(1.25,distance/45)+'s'} as CSSProperties}><i className="outgoing-pulse"/><i className="return-pulse"/></div>
           </div>
           <div className={pulseKey > 0 ? 'time-view fired' : 'time-view'} key={'time-'+pulseKey}><div className="plot-label"><span>探测信号</span><b>Δt = {roundTrip} ns</b></div><div className="time-axis"><i /><span>0</span><span>时间 / ns</span></div><div className="signal-peak launch-peak"><span>发射</span></div><div className="signal-peak echo-peak" style={{left:echoPosition+'%'}}><span>回波</span></div><div className="delta-bracket" style={{left:'15%',width:(echoPosition-15)+'%'}}><span>Δt</span></div></div>
+          <div className="advanced-equation timing-equation"><span>时间抖动决定距离精度</span><b>σ<sub>R</sub> = cσ<sub>t</sub> / 2</b></div>
           <p className="stage-note">动画已将光速大幅放慢，仅用于显示因果关系</p>
         </div>
       </section>
 
-      <section className="lab-section point-lab-section" id="point-cloud">
+      <section className={'lab-section point-lab-section slide '+(activeSection===7?'active':'')} id="point-cloud" aria-hidden={activeSection!==7}>
         <div className="lab-copy"><p className="eyebrow cyan">从一次回波到三维世界</p><h2>一个点，怎样长成<br />机器眼中的道路？</h2><p className="lab-intro">{pointSteps[pointStep][1]}</p>
           <div className="coordinate-chain"><span>Δt</span><i>→</i><span>R, θ, φ</span><i>→</i><span>x, y, z</span><i>→</i><b>点云</b></div>
           <StepButtons step={pointStep} setStep={setPointStep} labels={pointSteps.map(item=>item[0])}/>
@@ -241,19 +241,34 @@ export default function Home() {
         <div className="point-stage"><div className="cloud-frame"><PointCloud stage={pointStep} mode={pointMode}/><span className="cloud-live">LIVE · SCAN {pointStep+1}/4</span><span className="cloud-legend">{pointStep===3?'位置来自光学 · 类别来自算法':'R + θ + φ'}</span></div>
           <div className="point-modes"><span>点的颜色表示</span>{(['distance','intensity','semantic'] as const).map(mode=><button key={mode} className={pointMode===mode?'active':''} onClick={()=>setPointMode(mode)}>{mode==='distance'?'距离':mode==='intensity'?'反射强度':'语义结果'}</button>)}</div>
           <div className="sensor-roles"><span><b>LiDAR</b>三维几何</span><span><b>Camera</b>纹理语义</span><span><b>Radar</b>速度与全天候</span></div>
+          <div className="vector-equation"><span>x = R cosφ cosθ</span><span>y = R cosφ sinθ</span><span>z = R sinφ</span></div>
         </div>
       </section>
 
-      <section className="future-section" id="future">
+      <section className={'future-section slide '+(activeSection===8?'active':'')} id="future" aria-hidden={activeSection!==8}>
         <div className="future-heading"><p className="eyebrow">未来 · 从器件到主动光电系统</p><h2>不只是发光或收光，<br />而是控制光。</h2></div>
         <div className="future-paths"><article className="future-path warm-path"><span>LED 台灯</span><div><b>固定白光</b><i/>多通道光谱<i/>人因照明</div><p>合适的光，在合适的时间，到达合适的位置。</p></article><article className="future-path cyan-path"><span>车载 LiDAR</span><div><b>机械扫描</b><i/>固态扫描<i/>光子芯片</div><p>更小、更可靠，并同时获取距离与径向速度。</p></article></div>
+        <div className="future-summary-grid"><article><b>共同趋势</b><strong>从单器件走向系统级调控</strong><p>控制光谱、相位、方向、时间与相干性。</p></article><article><b>共同约束</b><strong>效率 · 热管理 · 可靠性 · 成本</strong><p>真正进入“身边”，最终取决于工程闭环。</p></article></div>
+      </section>
+
+      <section className={'research-slide slide '+(activeSection===9?'active':'')} id="research" aria-hidden={activeSection!==9}>
         <div className="research-showcase">
-          <div className="research-copy"><p>浙江大学光电学院 · 2025</p><h3>微梳 × OPA × FMCW</h3><div className="research-tabs">{['微梳并行通道','OPA 无机械扫描','FMCW 相干测距'].map((label,index)=><button key={label} className={futureStep===index?'active':''} onClick={()=>setFutureStep(index)}>{label}</button>)}</div><p className="research-explain">{['一个泵浦源产生多条等间隔相干波长，为并行测量提供通道。','阵元相位梯度改变，远场主瓣随之偏转，不依赖宏观旋转机构。','发射扫频光与延迟回波相干混频，拍频中编码距离与径向速度。'][futureStep]}</p><a href="https://doi.org/10.1038/s41467-025-56483-9" target="_blank" rel="noreferrer">Nature Communications 16, 1056 →</a></div>
+          <div className="research-copy"><p>浙江大学光电学院 · 2025</p><h3>微梳 × OPA × FMCW</h3><div className="research-tabs">{['微梳并行通道','OPA 无机械扫描','FMCW 相干测距'].map((label,index)=><button key={label} className={futureStep===index?'active':''} onClick={()=>setFutureStep(index)}>{label}</button>)}</div><p className="research-explain">{['一个泵浦源产生多条等间隔相干波长，为并行测量提供通道。','阵元相位梯度改变，远场主瓣随之偏转，不依赖宏观旋转机构。','发射扫频光与延迟回波相干混频，拍频中编码距离与径向速度。'][futureStep]}</p><div className="fmcw-equation"><span>线性扫频斜率 S</span><b>f<sub>b</sub> ≈ 2SR / c ± 2v / λ</b><small>拍频同时携带距离 R 与径向速度 v</small></div><a href="https://doi.org/10.1038/s41467-025-56483-9" target="_blank" rel="noreferrer">Nature Communications 16, 1056 →</a></div>
           <div className={'future-animation future-step-'+futureStep}><div className="microcomb"><i/><i/><i/><i/><i/><i/></div><div className="opa-array"><i/><i/><i/><i/><i/><i/><i/><i/></div><div className="steered-beams"><i/><i/><i/><i/></div><div className="chirp-chart"><i className="tx"/><i className="rx"/><span>f<sub>b</sub></span></div><img src="/zju-fmcw-lidar.png" alt="浙江大学微梳结合光学相控阵并行FMCW激光雷达系统图"/></div>
         </div>
-        <blockquote>蓝光 LED 改变了人看世界的条件；<br/>激光雷达正在改变机器认识世界的方式。</blockquote>
-        <footer className="story-footer"><span>图片授权信息见资料来源</span><button onClick={()=>setReferencesOpen(true)}>资料与图片来源 ↗</button><a href="#top">回到开头 ↑</a></footer>
       </section>
+
+      <section className={'closing-slide slide '+(activeSection===10?'active':'')} id="closing" aria-hidden={activeSection!==10}>
+        <div className="closing-orbit" aria-hidden="true"><i/><i/><i/><b>光</b></div>
+        <blockquote>蓝光 LED 改变了人看世界的条件；<br/>激光雷达正在改变机器认识世界的方式。</blockquote>
+        <footer className="story-footer"><span>图片授权信息见资料来源</span><button onClick={()=>setReferencesOpen(true)}>资料与图片来源 ↗</button><button onClick={()=>goToSlide(0)}>回到开头 ↑</button></footer>
+      </section>
+
+      <div className="deck-controls" aria-label="幻灯片控制">
+        <button onClick={()=>goToSlide(activeSection-1)} disabled={activeSection===0} aria-label="上一页">←</button>
+        <span><b>{String(activeSection+1).padStart(2,'0')}</b><i />{slideTitles[activeSection]}</span>
+        <button onClick={()=>goToSlide(activeSection+1)} disabled={activeSection===sections.length-1} aria-label="下一页">→</button>
+      </div>
 
       {referencesOpen&&<div className="reference-backdrop" role="dialog" aria-modal="true" onClick={event=>{if(event.target===event.currentTarget)setReferencesOpen(false)}}>
         <section className="reference-modal"><header><p className="eyebrow cyan">REFERENCES</p><button onClick={()=>setReferencesOpen(false)}>×</button></header><h2>资料与图片来源</h2><ol>{references.map(([label,url])=><li key={url}><a href={url} target="_blank" rel="noreferrer">{label}</a></li>)}</ol><p>台灯照片：Yury Rymko / Pexels；车辆照片：MB-one / CC BY-SA 4.0；LED 灯板：Raimond Spekking / CC BY-SA 4.0。浙大论文系统图原图未改动，CC BY-NC-ND 4.0。</p></section>
