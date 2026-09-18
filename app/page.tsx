@@ -1,301 +1,260 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 
-const scripts = [
-  '我们每天都在使用光学仪器，但很多时候并没有意识到。晚上坐在书桌前，我打开一盏 LED 台灯；白天走到路边，一些汽车正在用人眼看不见的激光观察我。这两件仪器都在发光，但一束光是为了让人看见，另一束光是为了让机器看见。接下来我想从这两个非常具体的生活场景出发，讨论它们怎样出现、今天发挥什么作用，以及以后会走向哪里。',
-  '第一件仪器是书桌上的 LED 台灯。表面上，我们只是按下开关；内部却经历了从半导体芯片发出蓝光、再由荧光材料形成白光的过程。早期红光和绿光 LED 已经出现，但高效蓝光长期缺失。20 世纪八九十年代，高质量 GaN 外延、p 型 GaN 和 InGaN 有源区取得突破，蓝光 LED 才真正实用。2014 年诺贝尔物理学奖表彰了这一发明。它的历史作用不是多了一种颜色，而是补齐了高效白光照明所需的关键短波光源。',
-  '蓝光 LED 的核心是正向偏置的半导体结。n 区电子和 p 区空穴被注入 InGaN/GaN 多量子阱，在很小的有源区内发生辐射复合，把能量以光子形式释放。光子能量近似等于有效带隙，E 等于 hν，也等于 hc 除以 λ。450 纳米蓝光的光子能量约为 2.76 电子伏特。异质结和量子阱的意义，是把电子与空穴限制在一起，提高辐射复合概率。蓝光之所以难，还涉及宽禁带材料的 p 型掺杂、晶格失配、极化场和缺陷控制。',
-  '蓝光 LED 本身并不发白光。常见台灯让一部分蓝光直接透过，另一部分蓝光激发荧光粉，转换成较长波长的黄绿和红光；这些光混合后才被人眼感知为白色。现实中的台灯也不能只看功率，还要看照度、显色指数、色温、频闪和光谱分布。未来照明的重点不再只是更亮、更省电，而是根据时间、环境和使用者调节光谱，让合适的光在合适的时间到达合适的位置。',
-  '第二件仪器是车载激光雷达。在一些国产智能汽车上，车顶或车头的小型凸起就是它。最直观的测距方式是直接飞行时间法：发射一个短激光脉冲，记录它被目标反射后返回的时间，距离等于光速乘往返时间再除以二。假设行人在 30 米外，光往返 60 米，只需要约 200 纳秒。激光测距早期用于卫星和月球测量，后来进入测绘与机器人领域，现在走到了日常道路上。',
-  '一次回波只能得到一个距离。雷达再结合水平和垂直扫描角度，把极坐标转换为三维坐标，连续测量便形成点云。点云中的每个点不仅有位置，还可能带有回波强度等信息，算法据此识别道路、汽车和行人。激光雷达提供精确的三维几何信息，但不能单独完成自动驾驶；它仍要与摄像头、毫米波雷达、定位和决策系统配合。雨雾、强日光、低反射率目标和多雷达串扰，也都是现实限制。',
-  '两件仪器都在走向更主动、更集成的光电系统。台灯将从固定白光走向多通道、节律友好的智能光环境；车载雷达则从旋转机械结构走向固态化、芯片化和相干探测。浙大光电学院团队在 2025 年展示了微梳结合硅基光学相控阵的并行 FMCW 激光雷达：多个相干波长通道并行工作，OPA 无机械地偏转光束，相干拍频同时提取距离和径向速度。回到题目，蓝光 LED 台灯改变了人类看世界的条件，车载激光雷达正在改变机器认识世界的方式。'
+const sections = ['top', 'question', 'led-history', 'led-principle', 'white-light', 'lidar-history', 'tof', 'point-cloud', 'future'];
+const ledSteps = [
+  ['未加偏压', '载流子分处两侧，结区势垒阻止持续注入。'],
+  ['正向注入', '电子由 n 区、空穴由 p 区进入 InGaN 有源区。'],
+  ['量子阱限域', '势阱把两类载流子限制在纳米尺度，提高波函数重叠。'],
+  ['辐射复合', '电子跨越有效带隙与空穴复合，释放约 450 nm 蓝光。'],
+];
+const whiteModes = [
+  ['蓝光芯片', '450 nm 窄峰', '蓝光仍然只是单色光。'],
+  ['中性白光', '蓝峰＋荧光宽带', '部分蓝光透过，部分被下转换后共同形成白光。'],
+  ['暖白高显色', '增强长波成分', '增加红色成分可改善暖色物体的呈现，但转换损耗也会变化。'],
+];
+const pointSteps = [
+  ['一次回波', '一次测量只得到一个距离点。'],
+  ['一条扫描线', '水平扫描角 θ 改变，点开始勾勒物体横截面。'],
+  ['一帧点云', '再加入垂直角 φ，连续回波逐渐构成三维轮廓。'],
+  ['机器理解', '位置和强度来自传感器；分类与检测来自后续算法。'],
+];
+const references = [
+  ['Nobel Prize 2014：高效蓝光 LED', 'https://www.nobelprize.org/uploads/2018/06/advanced-physicsprize2014.pdf'],
+  ['DOE：LED Basics', 'https://www.energy.gov/cmei/ssl/led-basics'],
+  ['NASA：Intro to LIDAR 3D', 'https://svs.gsfc.nasa.gov/10757'],
+  ['浙江大学：固态激光雷达研究进展', 'https://doi.org/10.12086/oee.2019.190218'],
+  ['浙江大学光电学院：微梳—OPA 并行 FMCW LiDAR', 'https://doi.org/10.1038/s41467-025-56483-9'],
 ];
 
-const sourceLinks = [
-  ['诺贝尔奖：高效蓝光 LED 的科学背景', 'https://www.nobelprize.org/uploads/2018/06/advanced-physicsprize2014.pdf'],
-  ['美国能源部：LED Basics', 'https://www.energy.gov/cmei/ssl/led-basics'],
-  ['NASA：卫星激光测距的起点', 'https://www.nasa.gov/technology/how-satellite-laser-ranging-got-its-start-50-years-ago/'],
-  ['浙大：固态激光雷达研究进展', 'https://doi.org/10.12086/oee.2019.190218'],
-  ['浙大光电学院：微梳与 OPA 并行 FMCW LiDAR', 'https://doi.org/10.1038/s41467-025-56483-9'],
-];
+function StepButtons({ step, setStep, labels }: { step: number; setStep: (value: number) => void; labels: string[] }) {
+  return <div className="step-buttons" aria-label="动画步骤">{labels.map((label, index) => (
+    <button key={label} className={step === index ? 'active' : ''} onClick={() => setStep(index)}>
+      <b>{String(index + 1).padStart(2, '0')}</b>{label}
+    </button>
+  ))}</div>;
+}
 
-function PointCloud() {
+function PointCloud({ stage, mode }: { stage: number; mode: 'distance' | 'intensity' | 'semantic' }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    let frame = 0;
-    let animation = 0;
-
-    const render = () => {
+    let raf = 0;
+    const started = performance.now();
+    const duration = stage === 2 ? 1500 : 900;
+    const render = (now: number) => {
       const rect = canvas.getBoundingClientRect();
       const ratio = Math.min(window.devicePixelRatio || 1, 2);
-      if (canvas.width !== rect.width * ratio || canvas.height !== rect.height * ratio) {
-        canvas.width = rect.width * ratio;
-        canvas.height = rect.height * ratio;
-      }
+      const targetW = Math.max(1, Math.round(rect.width * ratio));
+      const targetH = Math.max(1, Math.round(rect.height * ratio));
+      if (canvas.width !== targetW || canvas.height !== targetH) { canvas.width = targetW; canvas.height = targetH; }
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      const w = rect.width;
-      const h = rect.height;
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = '#06101d';
-      ctx.fillRect(0, 0, w, h);
-
-      const scan = (frame % 240) / 240 * w;
-      const points: Array<[number, number, number]> = [];
-      for (let x = 0; x < w; x += 12) {
-        const roadY = h * .78 + Math.sin(x * .035) * 3;
-        points.push([x, roadY, .45]);
-        if (x % 24 === 0) points.push([x, roadY + 28, .24]);
+      const w = rect.width, h = rect.height;
+      ctx.clearRect(0, 0, w, h); ctx.fillStyle = '#07111b'; ctx.fillRect(0, 0, w, h);
+      const points: Array<[number, number, number, number]> = [];
+      for (let x = 20; x < w - 18; x += 11) {
+        const y = h * .78 + Math.sin(x * .033) * 3;
+        points.push([x, y, .35, 0]); if (x % 22 < 5) points.push([x, y + 28, .2, 0]);
       }
-      for (let y = h * .31; y < h * .76; y += 9) {
+      for (let y = h * .31; y < h * .76; y += 8) {
         const t = (y - h * .31) / (h * .45);
-        points.push([w * .31 - 24 + t * 7, y, .9]);
-        points.push([w * .31 + 24 - t * 7, y, .9]);
+        points.push([w * .29 - 23 + t * 7, y, .82, 1], [w * .29 + 23 - t * 7, y, .82, 1]);
       }
-      for (let a = 0; a < Math.PI * 2; a += .28) {
-        points.push([w * .31 + Math.cos(a) * 20, h * .25 + Math.sin(a) * 24, 1]);
+      for (let a = 0; a < Math.PI * 2; a += .25) points.push([w * .29 + Math.cos(a) * 19, h * .25 + Math.sin(a) * 23, .94, 1]);
+      for (let x = w * .53; x < w * .88; x += 9) {
+        const roof = Math.abs((x - w * .70) / (w * .18));
+        points.push([x, h * (.56 + roof * .09), .78, 2], [x, h * .7, .72, 2]);
       }
-      for (let x = w * .55; x < w * .86; x += 10) {
-        const roof = Math.abs((x - w * .7) / (w * .16));
-        points.push([x, h * (.58 + roof * .08), .82]);
-        points.push([x, h * .7, .76]);
+      for (let a = 0; a < Math.PI * 2; a += .22) {
+        points.push([w * .60 + Math.cos(a) * 27, h * .71 + Math.sin(a) * 27, .82, 2]);
+        points.push([w * .81 + Math.cos(a) * 27, h * .71 + Math.sin(a) * 27, .82, 2]);
       }
-      for (let a = 0; a < Math.PI * 2; a += .25) {
-        points.push([w * .61 + Math.cos(a) * 28, h * .71 + Math.sin(a) * 28, .85]);
-        points.push([w * .8 + Math.cos(a) * 28, h * .71 + Math.sin(a) * 28, .85]);
+      const progress = Math.min(1, (now - started) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      let visible = 1;
+      if (stage === 1) visible = Math.max(8, Math.floor(points.length * .18 * eased));
+      if (stage >= 2) visible = Math.max(12, Math.floor(points.length * eased));
+      const selected = points[Math.min(points.length - 1, Math.max(0, visible - 1))];
+      if (stage <= 2 && selected) {
+        ctx.strokeStyle = 'rgba(115,232,255,.34)'; ctx.lineWidth = 1; ctx.beginPath();
+        ctx.moveTo(w * .08, h * .86); ctx.lineTo(selected[0], selected[1]); ctx.stroke();
       }
-
-      points.forEach(([x, y, alpha]) => {
-        if (x > scan + 55) return;
-        const proximity = Math.max(0, 1 - Math.abs(x - scan) / 90);
-        ctx.fillStyle = `rgba(${90 + proximity * 80}, ${205 + proximity * 40}, 255, ${alpha})`;
-        ctx.beginPath();
-        ctx.arc(x, y, 1.4 + proximity * 1.2, 0, Math.PI * 2);
-        ctx.fill();
+      points.slice(0, visible).forEach(([x, y, alpha, kind]) => {
+        let color = 'rgba(106,221,255,' + alpha + ')';
+        if (mode === 'distance') {
+          const near = 1 - x / w;
+          color = 'rgba(' + (80 + 180 * near) + ',' + (150 + 75 * (1 - near)) + ',' + (230 - 70 * near) + ',' + alpha + ')';
+        }
+        if (mode === 'intensity') {
+          const v = Math.round(125 + alpha * 130);
+          color = 'rgba(' + v + ',' + v + ',' + v + ',' + Math.min(1, alpha + .15) + ')';
+        }
+        if (mode === 'semantic') color = kind === 1 ? 'rgba(255,112,151,' + alpha + ')' : kind === 2 ? 'rgba(255,192,82,' + alpha + ')' : 'rgba(112,184,213,' + alpha + ')';
+        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, stage === 0 ? 3.6 : 1.55, 0, Math.PI * 2); ctx.fill();
       });
-      const gradient = ctx.createLinearGradient(scan - 55, 0, scan + 20, 0);
-      gradient.addColorStop(0, 'rgba(75,225,255,0)');
-      gradient.addColorStop(1, 'rgba(75,225,255,.2)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(scan - 55, 0, 75, h);
-      frame += 1;
-      animation = requestAnimationFrame(render);
+      if (stage === 3 && progress > .45) {
+        ctx.setLineDash([5, 5]); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,112,151,.65)';
+        ctx.strokeRect(w * .23, h * .18, w * .12, h * .61); ctx.strokeStyle = 'rgba(255,192,82,.65)';
+        ctx.strokeRect(w * .5, h * .46, w * .4, h * .31); ctx.setLineDash([]);
+      }
+      if (progress < 1) raf = requestAnimationFrame(render);
     };
-    render();
-    return () => cancelAnimationFrame(animation);
-  }, []);
-
-  return <canvas ref={canvasRef} className="point-cloud" aria-label="激光雷达扫描生成行人与车辆点云的动画" />;
+    raf = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(raf);
+  }, [stage, mode]);
+  return <canvas ref={canvasRef} aria-label="从单次回波逐步形成行人、汽车与道路点云的动画" />;
 }
 
 export default function Home() {
-  const [slide, setSlide] = useState(0);
-  const [notesOpen, setNotesOpen] = useState(false);
-  const [sourcesOpen, setSourcesOpen] = useState(false);
-  const [lampOpen, setLampOpen] = useState(false);
-  const [forwardBias, setForwardBias] = useState(false);
-  const [phosphor, setPhosphor] = useState(54);
+  const [activeSection, setActiveSection] = useState(0);
+  const [ledStep, setLedStep] = useState(0);
+  const [whiteMode, setWhiteMode] = useState(1);
   const [distance, setDistance] = useState(30);
-  const touchStart = useRef<number | null>(null);
-
-  const go = useCallback((next: number) => {
-    setSlide(Math.max(0, Math.min(6, next)));
-    setNotesOpen(false);
-  }, []);
+  const [pulseKey, setPulseKey] = useState(0);
+  const [pointStep, setPointStep] = useState(0);
+  const [pointMode, setPointMode] = useState<'distance' | 'intensity' | 'semantic'>('distance');
+  const [futureStep, setFutureStep] = useState(0);
+  const [referencesOpen, setReferencesOpen] = useState(false);
 
   useEffect(() => {
+    const observer = new IntersectionObserver(entries => {
+      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) setActiveSection(sections.indexOf(visible.target.id));
+    }, { threshold: [.36, .62] });
+    sections.forEach(id => { const element = document.getElementById(id); if (element) observer.observe(element); });
+    return () => observer.disconnect();
+  }, []);
+  const scrollToSection = useCallback((index: number) => {
+    document.getElementById(sections[Math.max(0, Math.min(sections.length - 1, index))])?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') go(slide + 1);
-      if (event.key === 'ArrowLeft' || event.key === 'PageUp') go(slide - 1);
-      if (event.key.toLowerCase() === 's') setNotesOpen((value) => !value);
-      if (event.key === 'Escape') { setNotesOpen(false); setSourcesOpen(false); }
+      if (event.key === 'ArrowDown' || event.key === 'PageDown') { event.preventDefault(); scrollToSection(activeSection + 1); }
+      if (event.key === 'ArrowUp' || event.key === 'PageUp') { event.preventDefault(); scrollToSection(activeSection - 1); }
+      if (event.key === 'Escape') setReferencesOpen(false);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [go, slide]);
-
+    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
+  }, [activeSection, scrollToSection]);
   const roundTrip = useMemo(() => (distance * 2 / 299792458 * 1e9).toFixed(0), [distance]);
-  const cct = Math.round(6700 - phosphor * 52);
+  const echoPosition = 23 + (distance - 10) / 90 * 68;
 
   return (
-    <main
-      className="presentation-shell"
-      onTouchStart={(event) => { touchStart.current = event.touches[0].clientX; }}
-      onTouchEnd={(event) => {
-        if (touchStart.current === null) return;
-        const delta = event.changedTouches[0].clientX - touchStart.current;
-        if (Math.abs(delta) > 55) go(slide + (delta < 0 ? 1 : -1));
-        touchStart.current = null;
-      }}
-    >
-      <header className="topbar">
-        <span className="course-label">光基科技与人类文明</span>
-        <nav className="chapter-nav" aria-label="章节">
-          <span className={slide <= 3 ? 'active' : ''}>LED 台灯</span>
-          <i aria-hidden="true" />
-          <span className={slide >= 4 ? 'active' : ''}>车载激光雷达</span>
-        </nav>
-        <span className="slide-count">{String(slide + 1).padStart(2, '0')} / 07</span>
+    <main className="story">
+      <header className="story-nav">
+        <a href="#top" className="wordmark">光基科技与人类文明</a>
+        <div className="nav-axis">
+          <a className={activeSection <= 4 ? 'active' : ''} href="#led-history">01 让人看见</a><i />
+          <a className={activeSection >= 5 && activeSection <= 7 ? 'active' : ''} href="#lidar-history">02 让机器看见</a><i />
+          <a className={activeSection === 8 ? 'active' : ''} href="#future">03 主动光学</a>
+        </div>
+        <span className="section-count">{String(activeSection + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}</span>
       </header>
 
-      <div className="slides" style={{ transform: `translateX(-${slide * 100}vw)` }}>
-        <section className="slide hero-slide" aria-label="封面">
-          <div className="hero-image hero-lamp" aria-hidden="true" />
-          <div className="hero-image hero-car" aria-hidden="true" />
-          <div className="hero-shade" aria-hidden="true" />
-          <div className="hero-copy">
-            <p className="eyebrow">两件身边的光学仪器</p>
-            <h1>从书桌<br />到车前</h1>
-            <p className="hero-deck"><span>一束光让人看见</span><span>一束光让机器看见</span></p>
-            <button className="pill-button" type="button" onClick={() => go(1)}>开始讲述 <b>→</b></button>
-          </div>
-          <div className="scene-label scene-label-left"><b>01</b><span>书桌上的 LED 台灯</span></div>
-          <div className="scene-label scene-label-right"><b>02</b><span>道路上的车载激光雷达</span></div>
-        </section>
-
-        <section className="slide lamp-slide" aria-label="书桌上的LED台灯">
-          <div className="content-wrap split-layout">
-            <div className="copy-block">
-              <p className="section-kicker warm">仪器一 · 身边</p>
-              <h2>书桌上的<br />LED 台灯</h2>
-              <p className="lead">每天按下的开关，连接着一场材料革命。</p>
-              <div className="timeline compact-timeline">
-                <span><b>1989</b> p-GaN</span><span><b>1990s</b> InGaN 蓝光</span><span><b>2014</b> Nobel</span><span><b>今天</b> 固态照明</span>
-              </div>
-            </div>
-            <button className={`lamp-reveal ${lampOpen ? 'open' : ''}`} onClick={() => setLampOpen(!lampOpen)} aria-pressed={lampOpen}>
-              <img src={lampOpen ? '/led-board.jpg' : '/desk-lamp.jpg'} alt={lampOpen ? 'LED台灯内部的SMD灯板' : '书桌上的台灯'} />
-              <span>{lampOpen ? '回到日常' : '拆开灯头'} <b>↗</b></span>
-            </button>
-          </div>
-          <p className="source-note">图片：Yury Rymko / Pexels；Raimond Spekking / CC BY-SA 4.0</p>
-        </section>
-
-        <section className="slide principle-slide" aria-label="蓝光LED原理">
-          <div className="content-wrap principle-grid">
-            <div className="copy-block">
-              <p className="section-kicker blue">原理 · 蓝光为什么难</p>
-              <h2>把电子与空穴<br />关进量子阱</h2>
-              <div className="formula-card"><span>E<sub>photon</sub> ≈ E<sub>g</sub> = hc / λ</span><strong>450 nm → 2.76 eV</strong></div>
-              <p className="micro-copy">GaN 宽禁带 · InGaN 调波长 · 多量子阱限域</p>
-            </div>
-            <div className={`band-diagram ${forwardBias ? 'biased' : ''}`}>
-              <div className="band-label p-label">p-GaN<br /><small>空穴注入</small></div>
-              <div className="quantum-wells" aria-hidden="true"><i /><i /><i /></div>
-              <div className="band-label n-label">n-GaN<br /><small>电子注入</small></div>
-              <div className="carrier electron e1">e⁻</div><div className="carrier electron e2">e⁻</div>
-              <div className="carrier hole h1">h⁺</div><div className="carrier hole h2">h⁺</div>
-              <div className="photon">hν</div>
-              <p>InGaN / GaN 多量子阱</p>
-              <button className="control-button" onClick={() => setForwardBias(!forwardBias)}>{forwardBias ? '复位' : '加正向电压'}</button>
-            </div>
-          </div>
-          <p className="source-note">科学背景：The Nobel Prize in Physics 2014</p>
-        </section>
-
-        <section className="slide white-light-slide" aria-label="蓝光LED产生白光">
-          <div className="content-wrap">
-            <p className="section-kicker warm">现实 · 从蓝光到白光</p>
-            <div className="headline-row"><h2>不是“白色芯片”<br />而是光谱混合</h2><p>蓝光直出<br /><b>＋</b><br />荧光粉下转换</p></div>
-            <div className="spectrum-lab">
-              <div className="spectrum-plot" aria-label="简化的白光LED光谱">
-                <div className="grid-lines" aria-hidden="true" />
-                <div className="blue-peak" style={{ height: `${88 - phosphor * .45}%` }}><span>450 nm</span></div>
-                <div className="phosphor-band" style={{ opacity: .35 + phosphor / 120 }}><span>荧光粉宽谱</span></div>
-                <div className="axis-labels"><span>400</span><span>500</span><span>600</span><span>700 nm</span></div>
-              </div>
-              <div className="spectrum-control">
-                <label htmlFor="phosphor">荧光粉转换比例</label>
-                <input id="phosphor" type="range" min="20" max="80" value={phosphor} onChange={(event) => setPhosphor(Number(event.target.value))} />
-                <strong>≈ {cct} K</strong>
-                <div className="quality-tags"><span>照度</span><span>显色</span><span>频闪</span><span>节律</span></div>
-              </div>
-            </div>
-          </div>
-          <p className="source-note">数据关系参考：DOE LED Basics；光谱原图：Jcb1976 / CC BY-SA 4.0</p>
-        </section>
-
-        <section className="slide tof-slide" aria-label="车载激光雷达飞行时间测距">
-          <div className="lidar-photo" aria-hidden="true" />
-          <div className="lidar-overlay" aria-hidden="true" />
-          <div className="content-wrap lidar-content">
-            <p className="section-kicker cyan">仪器二 · 身边</p>
-            <h2>车上的<br />激光雷达</h2>
-            <p className="lead">一次往返，把“看见”变成时间测量。</p>
-            <div className="tof-card">
-              <div className="tof-formula">R = cΔt / 2</div>
-              <div className="tof-live"><span>目标距离</span><strong>{distance} m</strong><span>往返时间</span><strong>{roundTrip} ns</strong></div>
-              <input aria-label="改变目标距离" type="range" min="10" max="100" value={distance} onChange={(event) => setDistance(Number(event.target.value))} />
-              <div className="beam-track"><i style={{ animationDuration: `${Math.max(1.2, distance / 24)}s` }} /></div>
-            </div>
-            <div className="mini-history"><span><b>1964</b> 卫星测距</span><i>→</i><span><b>2000s</b> 无人车</span><i>→</i><span><b>今天</b> 走上街道</span></div>
-          </div>
-          <p className="source-note">车辆图片：MB-one / CC BY-SA 4.0；历史资料：NASA</p>
-        </section>
-
-        <section className="slide point-slide" aria-label="激光雷达点云">
-          <div className="content-wrap point-grid">
-            <div className="copy-block">
-              <p className="section-kicker cyan">原理 · 从距离到空间</p>
-              <h2>一个回波<br />怎样成为三维世界？</h2>
-              <div className="data-chain"><span>Δt</span><i>→</i><span>R, θ, φ</span><i>→</i><span>x, y, z</span><i>→</i><b>点云</b></div>
-              <div className="sensor-list"><span>几何：LiDAR</span><span>纹理：Camera</span><span>速度：Radar</span></div>
-            </div>
-            <div className="cloud-frame">
-              <PointCloud />
-              <span className="cloud-status">LIVE · 3D POINT CLOUD</span>
-              <span className="cloud-legend">行人　车辆　道路</span>
-            </div>
-          </div>
-        </section>
-
-        <section className="slide future-slide" aria-label="未来发展与总结">
-          <div className="content-wrap future-wrap">
-            <p className="section-kicker future">未来 · 两条路径，同一个方向</p>
-            <h2>光，正在变得更主动</h2>
-            <div className="future-columns">
-              <article className="future-card warm-card">
-                <span>LED 台灯</span><h3>从照亮房间<br />到调控光环境</h3>
-                <ul><li>多通道可调光谱</li><li>节律友好照明</li><li>感知与通信融合</li></ul>
-              </article>
-              <article className="future-card research-card">
-                <img src="/zju-fmcw-lidar.png" alt="浙江大学微梳结合光学相控阵的并行FMCW激光雷达论文系统图" />
-                <div><span>浙江大学光电学院 · 2025</span><h3>微梳 × OPA × FMCW</h3><p>并行 · 相干 · 无机械扫描</p></div>
-              </article>
-              <article className="future-card cyan-card">
-                <span>车载激光雷达</span><h3>从旋转机械<br />到光子芯片</h3>
-                <ul><li>固态光束扫描</li><li>距离与径向速度</li><li>多传感器融合</li></ul>
-              </article>
-            </div>
-            <blockquote>蓝光 LED 改变了人看世界的条件；<br />激光雷达正在改变机器认识世界的方式。</blockquote>
-          </div>
-          <p className="source-note">Chen et al., Nature Communications 16, 1056 (2025) · 原图未改动 · CC BY-NC-ND 4.0</p>
-        </section>
-      </div>
-
-      <footer className="controls">
-        <button onClick={() => go(slide - 1)} disabled={slide === 0} aria-label="上一页">←</button>
-        <div className="progress" aria-label={`第 ${slide + 1} 页，共 7 页`}><i style={{ width: `${(slide + 1) / 7 * 100}%` }} /></div>
-        <button onClick={() => go(slide + 1)} disabled={slide === 6} aria-label="下一页">→</button>
-        <button className="text-control" onClick={() => setNotesOpen(!notesOpen)} aria-expanded={notesOpen}>讲稿 S</button>
-        <button className="text-control" onClick={() => setSourcesOpen(true)}>来源</button>
-      </footer>
-
-      <aside className={`speaker-notes ${notesOpen ? 'open' : ''}`} aria-hidden={!notesOpen}>
-        <div><span>第 {slide + 1} 页讲稿</span><button onClick={() => setNotesOpen(false)}>×</button></div>
-        <p>{scripts[slide]}</p>
-      </aside>
-
-      {sourcesOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="资料来源">
-          <section className="source-modal"><div><p className="section-kicker cyan">REFERENCES</p><button onClick={() => setSourcesOpen(false)}>×</button></div><h2>资料与图片来源</h2><ol>{sourceLinks.map(([label, url]) => <li key={url}><a href={url} target="_blank" rel="noreferrer">{label}</a></li>)}</ol><p>图片授权与作者信息见各页面底部。演示中的能带、光谱、飞行时间和点云动画均为本网页原创表达。</p></section>
+      <section className="story-hero" id="top">
+        <div className="hero-scene hero-scene-lamp" /><div className="hero-scene hero-scene-car" /><div className="hero-vignette" />
+        <div className="hero-title"><p>两件身边的光学仪器</p><h1>从书桌<br />到车前</h1>
+          <div className="hero-thesis"><span><b className="warm-dot" />制造光，让人看见</span><span><b className="cyan-dot" />测量光，让机器看见</span></div>
         </div>
-      )}
+        <div className="light-path human-path"><span>LED</span><i /><span>书本</span><i /><strong>人眼</strong></div>
+        <div className="light-path machine-path"><span>LiDAR</span><i /><span>行人</span><i className="return" /><strong>探测器</strong></div>
+        <a className="scroll-cue" href="#question">沿着光，继续向下 <b>↓</b></a>
+      </section>
+
+      <section className="opening-question" id="question">
+        <div className="question-copy"><p className="eyebrow">一天 · 两个动作</p><h2>按下台灯开关。<br />走过一辆汽车。</h2><p>两个再普通不过的瞬间，背后对应着光学技术的两次跨越：</p></div>
+        <div className="question-pair">
+          <article><span>01</span><h3>怎样高效地<br />制造白光？</h3><p>蓝光 LED 补齐固态照明缺失的短波光源。</p></article>
+          <article><span>02</span><h3>怎样精确地<br />测量空间？</h3><p>激光雷达把纳秒级时间差换算成三维距离。</p></article>
+        </div>
+      </section>
+
+      <section className="chapter-opening led-opening" id="led-history">
+        <div className="chapter-photo led-photo" />
+        <div className="chapter-copy"><p className="eyebrow warm">第一道难题 · 历史</p><h2>白光照明，<br />曾缺少最后一块拼图。</h2>
+          <p>红光与绿光 LED 已经出现，高效蓝光却长期缺席。蓝光的突破不是“多一种颜色”，而是让固态白光照明真正成立。</p>
+          <div className="history-line"><span><b>1960s</b>红光 LED</span><i /><span><b>1989</b>p-GaN</span><i /><span><b>1990s</b>InGaN 蓝光</span><i /><span><b>2014</b>Nobel</span></div>
+        </div>
+      </section>
+
+      <section className="lab-section led-lab-section" id="led-principle">
+        <div className="lab-copy"><p className="eyebrow blue">蓝光如何产生</p><h2>把载流子关进<br />纳米尺度的量子阱。</h2><p className="lab-intro">{ledSteps[ledStep][1]}</p>
+          <div className="formula compact"><span>hν ≈ E<sub>transition</sub></span><b>450 nm ≈ 2.76 eV</b></div>
+          <StepButtons step={ledStep} setStep={setLedStep} labels={ledSteps.map(item => item[0])} />
+        </div>
+        <div className={'led-stage led-step-' + ledStep}>
+          <div className="device-title"><span>器件剖面</span><b>{ledSteps[ledStep][0]}</b></div>
+          <div className="device-stack">
+            <div className="p-layer"><span>p-GaN</span><div className="carrier hole h-one">h⁺</div><div className="carrier hole h-two">h⁺</div></div>
+            <div className="mqw-layer"><span>InGaN / GaN MQW</span><i /><i /><i /><div className="recombination">hν</div></div>
+            <div className="n-layer"><span>n-GaN</span><div className="carrier electron e-one">e⁻</div><div className="carrier electron e-two">e⁻</div></div>
+          </div>
+          <div className="band-panel"><div className="energy-axis"><span>E</span><i /></div><div className="band-row conduction"><b>E<sub>c</sub></b><i /><i /><i /></div><div className="transition-arrow"><span>电子跃迁</span></div><div className="band-row valence"><b>E<sub>v</sub></b><i /><i /><i /></div><div className="photon-wave"><i /><i /><i /><i /></div></div>
+          <p className="stage-note">示意图不按尺度绘制</p>
+        </div>
+      </section>
+
+      <section className="lab-section white-lab-section" id="white-light">
+        <div className="lab-copy"><p className="eyebrow warm">从蓝光到白光 · 现实</p><h2>白光不是一种光，<br />而是一组光谱。</h2><p className="lab-intro">{whiteModes[whiteMode][2]}</p>
+          <div className="mode-tabs">{whiteModes.map((mode,index)=><button key={mode[0]} className={whiteMode===index?'active':''} onClick={()=>setWhiteMode(index)}>{mode[0]}</button>)}</div>
+          <div className="metric-row"><span><b>看亮度</b>照度</span><span><b>看颜色</b>显色</span><span><b>看时间</b>频闪与节律</span></div>
+        </div>
+        <div className={'white-stage white-mode-' + whiteMode}>
+          <div className="package-demo"><div className="blue-chip">InGaN<span>450 nm</span></div><div className="blue-rays"><i /><i /><i /><i /><i /></div><div className="phosphor-layer"><span>荧光粉</span><b>吸收 · 弛豫 · 再发射</b></div><div className="converted-rays"><i /><i /><i /><i /><i /></div><div className="white-output">白光</div></div>
+          <div className="spectrum-panel"><div className="spectrum-grid" /><div className="spectral-blue"><span>蓝光窄峰</span></div><div className="spectral-wide"><span>荧光宽带</span></div><div className="spectrum-axis"><span>400</span><span>500</span><span>600</span><span>700 nm</span></div><strong>{whiteModes[whiteMode][1]}</strong></div>
+        </div>
+      </section>
+
+      <section className="chapter-opening lidar-opening" id="lidar-history">
+        <div className="chapter-copy"><p className="eyebrow cyan">第二道难题 · 历史</p><h2>机器看见了行人，<br />但他究竟有多远？</h2><p>摄像头提供纹理与语义，距离却不是每个像素直接给出的量。LiDAR 选择了一种更主动的方法：发出光，再给光的往返计时。</p>
+          <div className="history-line dark-line"><span><b>1964</b>卫星激光测距</span><i /><span><b>2000s</b>无人车与机器人</span><i /><span><b>今天</b>走上日常道路</span></div>
+        </div>
+        <div className="chapter-photo lidar-photo" />
+      </section>
+
+      <section className="lab-section tof-lab-section" id="tof">
+        <div className="lab-copy"><p className="eyebrow cyan">直接飞行时间 · dToF</p><h2>给光按下一块<br />纳秒级秒表。</h2><p className="lab-intro">空间距离越远，时间轴上的回波峰就越向右移动。</p>
+          <div className="formula tof-equation"><span>R = cΔt / 2</span><b>{distance} m ↔ {roundTrip} ns</b></div>
+          <label className="distance-control"><span>目标距离</span><input type="range" min="10" max="100" value={distance} onChange={event=>setDistance(Number(event.target.value))}/><strong>{distance} m</strong></label>
+          <button className="primary-action" onClick={()=>setPulseKey(value=>value+1)}>发射一次 <b>→</b></button>
+        </div>
+        <div className="tof-stage">
+          <div className="space-view"><div className="sensor-object"><i /><span>LiDAR</span></div><div className="target-object" style={{left:echoPosition+'%'}}><i /><span>行人 · {distance} m</span></div><div className="range-line" style={{width:(echoPosition-11)+'%'}}><span>{distance} m</span></div>
+            <div className={pulseKey > 0 ? 'pulse-sequence fired' : 'pulse-sequence'} key={pulseKey} style={{'--target':echoPosition+'%','--pulse-time':Math.max(1.25,distance/45)+'s'} as CSSProperties}><i className="outgoing-pulse"/><i className="return-pulse"/></div>
+          </div>
+          <div className={pulseKey > 0 ? 'time-view fired' : 'time-view'} key={'time-'+pulseKey}><div className="plot-label"><span>探测信号</span><b>Δt = {roundTrip} ns</b></div><div className="time-axis"><i /><span>0</span><span>时间 / ns</span></div><div className="signal-peak launch-peak"><span>发射</span></div><div className="signal-peak echo-peak" style={{left:echoPosition+'%'}}><span>回波</span></div><div className="delta-bracket" style={{left:'15%',width:(echoPosition-15)+'%'}}><span>Δt</span></div></div>
+          <p className="stage-note">动画已将光速大幅放慢，仅用于显示因果关系</p>
+        </div>
+      </section>
+
+      <section className="lab-section point-lab-section" id="point-cloud">
+        <div className="lab-copy"><p className="eyebrow cyan">从一次回波到三维世界</p><h2>一个点，怎样长成<br />机器眼中的道路？</h2><p className="lab-intro">{pointSteps[pointStep][1]}</p>
+          <div className="coordinate-chain"><span>Δt</span><i>→</i><span>R, θ, φ</span><i>→</i><span>x, y, z</span><i>→</i><b>点云</b></div>
+          <StepButtons step={pointStep} setStep={setPointStep} labels={pointSteps.map(item=>item[0])}/>
+        </div>
+        <div className="point-stage"><div className="cloud-frame"><PointCloud stage={pointStep} mode={pointMode}/><span className="cloud-live">LIVE · SCAN {pointStep+1}/4</span><span className="cloud-legend">{pointStep===3?'位置来自光学 · 类别来自算法':'R + θ + φ'}</span></div>
+          <div className="point-modes"><span>点的颜色表示</span>{(['distance','intensity','semantic'] as const).map(mode=><button key={mode} className={pointMode===mode?'active':''} onClick={()=>setPointMode(mode)}>{mode==='distance'?'距离':mode==='intensity'?'反射强度':'语义结果'}</button>)}</div>
+          <div className="sensor-roles"><span><b>LiDAR</b>三维几何</span><span><b>Camera</b>纹理语义</span><span><b>Radar</b>速度与全天候</span></div>
+        </div>
+      </section>
+
+      <section className="future-section" id="future">
+        <div className="future-heading"><p className="eyebrow">未来 · 从器件到主动光电系统</p><h2>不只是发光或收光，<br />而是控制光。</h2></div>
+        <div className="future-paths"><article className="future-path warm-path"><span>LED 台灯</span><div><b>固定白光</b><i/>多通道光谱<i/>人因照明</div><p>合适的光，在合适的时间，到达合适的位置。</p></article><article className="future-path cyan-path"><span>车载 LiDAR</span><div><b>机械扫描</b><i/>固态扫描<i/>光子芯片</div><p>更小、更可靠，并同时获取距离与径向速度。</p></article></div>
+        <div className="research-showcase">
+          <div className="research-copy"><p>浙江大学光电学院 · 2025</p><h3>微梳 × OPA × FMCW</h3><div className="research-tabs">{['微梳并行通道','OPA 无机械扫描','FMCW 相干测距'].map((label,index)=><button key={label} className={futureStep===index?'active':''} onClick={()=>setFutureStep(index)}>{label}</button>)}</div><p className="research-explain">{['一个泵浦源产生多条等间隔相干波长，为并行测量提供通道。','阵元相位梯度改变，远场主瓣随之偏转，不依赖宏观旋转机构。','发射扫频光与延迟回波相干混频，拍频中编码距离与径向速度。'][futureStep]}</p><a href="https://doi.org/10.1038/s41467-025-56483-9" target="_blank" rel="noreferrer">Nature Communications 16, 1056 →</a></div>
+          <div className={'future-animation future-step-'+futureStep}><div className="microcomb"><i/><i/><i/><i/><i/><i/></div><div className="opa-array"><i/><i/><i/><i/><i/><i/><i/><i/></div><div className="steered-beams"><i/><i/><i/><i/></div><div className="chirp-chart"><i className="tx"/><i className="rx"/><span>f<sub>b</sub></span></div><img src="/zju-fmcw-lidar.png" alt="浙江大学微梳结合光学相控阵并行FMCW激光雷达系统图"/></div>
+        </div>
+        <blockquote>蓝光 LED 改变了人看世界的条件；<br/>激光雷达正在改变机器认识世界的方式。</blockquote>
+        <footer className="story-footer"><span>图片授权信息见资料来源</span><button onClick={()=>setReferencesOpen(true)}>资料与图片来源 ↗</button><a href="#top">回到开头 ↑</a></footer>
+      </section>
+
+      {referencesOpen&&<div className="reference-backdrop" role="dialog" aria-modal="true" onClick={event=>{if(event.target===event.currentTarget)setReferencesOpen(false)}}>
+        <section className="reference-modal"><header><p className="eyebrow cyan">REFERENCES</p><button onClick={()=>setReferencesOpen(false)}>×</button></header><h2>资料与图片来源</h2><ol>{references.map(([label,url])=><li key={url}><a href={url} target="_blank" rel="noreferrer">{label}</a></li>)}</ol><p>台灯照片：Yury Rymko / Pexels；车辆照片：MB-one / CC BY-SA 4.0；LED 灯板：Raimond Spekking / CC BY-SA 4.0。浙大论文系统图原图未改动，CC BY-NC-ND 4.0。</p></section>
+      </div>}
     </main>
   );
 }
