@@ -145,22 +145,25 @@ export default function Home() {
   return (
     <main className="story">
       <header className="story-nav">
-        <a href="#top" className="wordmark">光基科技与人类文明</a>
+        <a href="#top" className="wordmark"><b>OPTICS / 02</b><span>光基科技与人类文明</span></a>
         <div className="nav-axis">
           <a className={activeSection <= 4 ? 'active' : ''} href="#led-history">01 让人看见</a><i />
           <a className={activeSection >= 5 && activeSection <= 7 ? 'active' : ''} href="#lidar-history">02 让机器看见</a><i />
           <a className={activeSection === 8 ? 'active' : ''} href="#future">03 主动光学</a>
         </div>
-        <span className="section-count">{String(activeSection + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}</span>
+        <span className="section-count"><i>SYS · ONLINE</i>{String(activeSection + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}</span>
       </header>
+      <div className="story-progress" aria-hidden="true"><i style={{ height: `${((activeSection + 1) / sections.length) * 100}%` }} /><span>SCROLL</span></div>
 
       <section className="story-hero" id="top">
-        <div className="hero-scene hero-scene-lamp" /><div className="hero-scene hero-scene-car" /><div className="hero-vignette" />
+        <div className="hero-scene hero-scene-lamp" /><div className="hero-scene hero-scene-car" /><div className="hero-vignette" /><div className="hero-grid" />
+        <div className="hero-hud" aria-hidden="true"><span>EMISSION · 450 NM</span><span>TIME OF FLIGHT · ΔT</span><i /><i /></div>
         <div className="hero-title"><p>两件身边的光学仪器</p><h1>从书桌<br />到车前</h1>
           <div className="hero-thesis"><span><b className="warm-dot" />制造光，让人看见</span><span><b className="cyan-dot" />测量光，让机器看见</span></div>
         </div>
         <div className="light-path human-path"><span>LED</span><i /><span>书本</span><i /><strong>人眼</strong></div>
         <div className="light-path machine-path"><span>LiDAR</span><i /><span>行人</span><i className="return" /><strong>探测器</strong></div>
+        <div className="spectrum-scale" aria-hidden="true"><span>380</span><i /><i /><i /><i /><i /><span>780 nm</span></div>
         <a className="scroll-cue" href="#question">沿着光，继续向下 <b>↓</b></a>
       </section>
 
