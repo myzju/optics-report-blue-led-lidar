@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
-const siteUrl = process.env.SITE_URL ?? 'http://localhost:3000';
+const siteUrl =
+  process.env.SITE_URL ??
+  'https://optics-nearby-led-lidar.mickmickmick750161.chatgpt.site';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
